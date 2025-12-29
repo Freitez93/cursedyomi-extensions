@@ -180,7 +180,6 @@ open class SoloLatino : DooPlay(
     private val universalExtractor by lazy { UniversalExtractor(client) }
     private val vidHideExtractor by lazy { VidHideExtractor(client, headers) }
     private val streamWishExtractor by lazy { StreamWishExtractor(client, headers) }
-    //private val streamHideVidExtractor by lazy { StreamHideVidExtractor(client, headers) }
 
     override fun videoListParse(response: Response): List<Video> {
         val document = response.asJsoup()
