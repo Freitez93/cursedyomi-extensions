@@ -1,11 +1,12 @@
 .gradle
+.kotlin
+.idea/
+.DS_Store
 /local.properties
 /.idea/workspace.xml
-.DS_Store
-build/
 /captures
-.idea/
 *.iml
+build/
 repo/
 apk/
 gen

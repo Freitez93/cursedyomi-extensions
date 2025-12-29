@@ -1,13 +1,16 @@
 package eu.kanade.tachiyomi.lib.playlistutils
 
+import android.net.Uri
 import eu.kanade.tachiyomi.animesource.model.Track
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.util.asJsoup
+import extensions.utils.commonEmptyHeaders
 import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
-import okhttp3.internal.commonEmptyHeaders
+import java.io.File
+import kotlin.math.abs
 
 class PlaylistUtils(private val client: OkHttpClient, private val headers: Headers = commonEmptyHeaders) {
 
@@ -29,12 +32,15 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
      */
     fun extractFromHls(
         playlistUrl: String,
-        referer: String = "",
+        referer: String = playlistUrl.toDefaultReferer(),
         masterHeaders: Headers,
         videoHeaders: Headers,
         videoNameGen: (String) -> String = { quality -> quality },
         subtitleList: List<Track> = emptyList(),
         audioList: List<Track> = emptyList(),
+        toStandardQuality: (String) -> String = { quality ->
+            stnQuality(quality)
+        },
     ): List<Video> {
         return extractFromHls(
             playlistUrl,
@@ -44,6 +50,7 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
             videoNameGen,
             subtitleList,
             audioList,
+            toStandardQuality,
         )
     }
 
@@ -70,16 +77,17 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
      */
     fun extractFromHls(
         playlistUrl: String,
-        referer: String = "",
-        masterHeadersGen: (Headers, String) -> Headers = { baseHeaders, referer ->
-            generateMasterHeaders(baseHeaders, referer)
-        },
+        referer: String = playlistUrl.toDefaultReferer(),
+        masterHeadersGen: (Headers, String) -> Headers = ::generateMasterHeaders,
         videoHeadersGen: (Headers, String, String) -> Headers = { baseHeaders, referer, videoUrl ->
             generateMasterHeaders(baseHeaders, referer)
         },
         videoNameGen: (String) -> String = { quality -> quality },
         subtitleList: List<Track> = emptyList(),
         audioList: List<Track> = emptyList(),
+        toStandardQuality: (String) -> String = { quality ->
+            stnQuality(quality)
+        },
     ): List<Video> {
         val masterHeaders = masterHeadersGen(headers, referer)
 
@@ -125,25 +133,81 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
             )
         }.toList()
 
-        return masterPlaylist.substringAfter(PLAYLIST_SEPARATOR).split(PLAYLIST_SEPARATOR).mapNotNull {
-            val resolution = it.substringAfter("RESOLUTION=")
-                .substringBefore("\n")
-                .substringAfter("x")
-                .substringBefore(",") + "p"
+        /**
+         * Stream might have multiple sub-streams separated by [PLAYLIST_SEPARATOR]. Template:
+         *
+         * #EXTM3U
+         * #EXT-X-STREAM-INF:BANDWIDTH=150000,RESOLUTION=416x234,CODECS="avc1.42e00a,mp4a.40.2"
+         * http://example.com/low/index.m3u8
+         * #EXT-X-STREAM-INF:BANDWIDTH=240000,RESOLUTION=416x234,CODECS="avc1.42e00a,mp4a.40.2"
+         * http://example.com/lo_mid/index.m3u8
+         * #EXT-X-STREAM-INF:BANDWIDTH=440000,RESOLUTION=416x234,CODECS="avc1.42e00a,mp4a.40.2"
+         * http://example.com/hi_mid/index.m3u8
+         * #EXT-X-STREAM-INF:BANDWIDTH=640000,RESOLUTION=640x360,CODECS="avc1.42e00a,mp4a.40.2"
+         * http://example.com/high/index.m3u8
+         * #EXT-X-STREAM-INF:BANDWIDTH=64000,CODECS="mp4a.40.5"
+         * http://example.com/audio/index.m3u8
+         *
+         * #EXTM3U
+         * #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="Italian",DEFAULT=YES,AUTOSELECT=YES,FORCED=NO,LANGUAGE="ita",URI="https://vixcloud.co/playlist/274438?type=audio&rendition=ita&token=rE-R01nYsIM8a4NkBowCtQ&expires=1752746791&edge=sc-u13-01"
+         * #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="audio",NAME="English",DEFAULT=NO,AUTOSELECT=NO,FORCED=NO,LANGUAGE="eng",URI="https://vixcloud.co/playlist/274438?type=audio&rendition=eng&token=rE-R01nYsIM8a4NkBowCtQ&expires=1752746791&edge=sc-u13-01"
+         * #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English [CC]",DEFAULT=NO,AUTOSELECT=NO,FORCED=NO,LANGUAGE="eng",URI="https://vixcloud.co/playlist/274438?type=subtitle&rendition=3-eng&token=rE-R01nYsIM8a4NkBowCtQ&expires=1752746791&edge=sc-u13-01"
+         * #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",DEFAULT=NO,AUTOSELECT=NO,FORCED=NO,LANGUAGE="eng",URI="https://vixcloud.co/playlist/274438?type=subtitle&rendition=4-eng&token=rE-R01nYsIM8a4NkBowCtQ&expires=1752746791&edge=sc-u13-01"
+         * #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Italian",DEFAULT=NO,AUTOSELECT=NO,FORCED=NO,LANGUAGE="ita",URI="https://vixcloud.co/playlist/274438?type=subtitle&rendition=5-ita&token=rE-R01nYsIM8a4NkBowCtQ&expires=1752746791&edge=sc-u13-01"
+         * #EXT-X-STREAM-INF:BANDWIDTH=1200000,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=854x480,AUDIO="audio",SUBTITLES="subs"
+         * https://vixcloud.co/playlist/274438?type=video&rendition=480p&token=9vYfo_rGTzt6ns19gvR0NQ&expires=1752746791&edge=sc-u13-01
+         * #EXT-X-STREAM-INF:BANDWIDTH=2150000,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=1280x720,AUDIO="audio",SUBTITLES="subs"
+         * https://vixcloud.co/playlist/274438?type=video&rendition=720p&token=9d2Xva5pQQA4zpQdLk1_sw&expires=1752746791&edge=sc-u13-01
+         * #EXT-X-STREAM-INF:BANDWIDTH=4500000,CODECS="avc1.640028,mp4a.40.2",RESOLUTION=1920x1080,AUDIO="audio",SUBTITLES="subs"
+         * https://vixcloud.co/playlist/274438?type=video&rendition=1080p&token=xEfP4QUI9tG-E6whlvwsig&expires=1752746791&edge=sc-u13-01
+         *
+         */
+        return masterPlaylist.substringAfter(PLAYLIST_SEPARATOR).split(PLAYLIST_SEPARATOR).mapNotNull { stream ->
+            val codec = CODECS_REGEX.find(stream)?.groupValues?.get(1)
+            if (!codec.isNullOrBlank()) {
+                // FIXME: Why skip mp4a?
+                if (codec.startsWith("mp4a")) return@mapNotNull null
+            }
 
-            val videoUrl = it.substringAfter("\n").substringBefore("\n").let { url ->
+            val resolution = RESOLUTION_REGEX.find(stream)
+                ?.groupValues?.get(1)
+                ?.let { resolution ->
+                    val standardQuality = QUALITY_REGEX.find(resolution)
+                        ?.groupValues?.get(1)
+                        ?.let { toStandardQuality(it) }
+
+                    if (!standardQuality.isNullOrBlank()) {
+                        "$standardQuality ($resolution)"
+                    } else {
+                        resolution
+                    }
+                }
+            val bandwidth = BANDWIDTH_REGEX.find(stream)
+                    ?.groupValues?.get(1)
+                    ?.toLongOrNull()
+            val bandwidthFormatted = bandwidth
+                    ?.let(::formatBytes)
+            val streamName = listOfNotNull(resolution, bandwidthFormatted).joinToString(" - ")
+                .takeIf { it.isNotBlank() }
+                ?: "Video"
+
+            val videoUrl = stream.substringAfter("\n").substringBefore("\n").let { url ->
                 getAbsoluteUrl(url, playlistUrl, masterUrlBasePath)?.trimEnd()
             } ?: return@mapNotNull null
 
-            Video(
-                videoUrl,
-                videoNameGen(resolution),
-                videoUrl,
+            bandwidth to Video(
+                url = videoUrl,
+                quality = videoNameGen(streamName),
+                videoUrl = videoUrl,
                 headers = videoHeadersGen(headers, referer, videoUrl),
                 subtitleTracks = subtitleTracks,
                 audioTracks = audioTracks,
             )
         }
+            .sortedByDescending { (bandwidth, _) ->
+                bandwidth ?: 0L
+            }
+            .map { (_, video) -> video }
     }
 
     private fun getAbsoluteUrl(url: String, playlistUrl: String, masterBase: String): String? {
@@ -183,14 +247,18 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
      * @param audioList a list of audio tracks associated with the DASH file, will append to audio tracks present in the dash file (default: empty list)
      * @return a list of Video objects
      */
+    @Suppress("unused")
     fun extractFromDash(
         mpdUrl: String,
         videoNameGen: (String) -> String,
         mpdHeaders: Headers,
         videoHeaders: Headers,
-        referer: String = "",
+        referer: String = mpdUrl.toDefaultReferer(),
         subtitleList: List<Track> = emptyList(),
         audioList: List<Track> = emptyList(),
+        toStandardQuality: (String) -> String = { quality ->
+            stnQuality(quality)
+        },
     ): List<Video> {
         return extractFromDash(
             mpdUrl,
@@ -202,6 +270,7 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
             { _, _, _ -> videoHeaders },
             subtitleList,
             audioList,
+            toStandardQuality,
         )
     }
 
@@ -229,15 +298,16 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
     fun extractFromDash(
         mpdUrl: String,
         videoNameGen: (String) -> String,
-        referer: String = "",
-        mpdHeadersGen: (Headers, String) -> Headers = { baseHeaders, referer ->
-            generateMasterHeaders(baseHeaders, referer)
-        },
+        referer: String = mpdUrl.toDefaultReferer(),
+        mpdHeadersGen: (Headers, String) -> Headers = ::generateMasterHeaders,
         videoHeadersGen: (Headers, String, String) -> Headers = { baseHeaders, referer, videoUrl ->
             generateMasterHeaders(baseHeaders, referer)
         },
         subtitleList: List<Track> = emptyList(),
         audioList: List<Track> = emptyList(),
+        toStandardQuality: (String) -> String = { quality ->
+            stnQuality(quality)
+        },
     ): List<Video> {
         return extractFromDash(
             mpdUrl,
@@ -249,6 +319,7 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
             videoHeadersGen,
             subtitleList,
             audioList,
+            toStandardQuality,
         )
     }
 
@@ -274,18 +345,20 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
      * @param audioList a list of audio tracks associated with the DASH file, will append to audio tracks present in the dash file (default: empty list)
      * @return a list of Video objects
      */
+    @Suppress("MemberVisibilityCanBePrivate")
     fun extractFromDash(
         mpdUrl: String,
         videoNameGen: (String, String) -> String,
-        referer: String = "",
-        mpdHeadersGen: (Headers, String) -> Headers = { baseHeaders, referer ->
-            generateMasterHeaders(baseHeaders, referer)
-        },
+        referer: String = mpdUrl.toDefaultReferer(),
+        mpdHeadersGen: (Headers, String) -> Headers = ::generateMasterHeaders,
         videoHeadersGen: (Headers, String, String) -> Headers = { baseHeaders, referer, videoUrl ->
             generateMasterHeaders(baseHeaders, referer)
         },
         subtitleList: List<Track> = emptyList(),
         audioList: List<Track> = emptyList(),
+        toStandardQuality: (String) -> String = { quality ->
+            stnQuality(quality)
+        },
     ): List<Video> {
         val mpdHeaders = mpdHeadersGen(headers, referer)
 
@@ -300,7 +373,9 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
 
         return doc.select("Representation[mimetype~=video]").map { videoSrc ->
             val bandwidth = videoSrc.attr("bandwidth")
-            val res = videoSrc.attr("height") + "p"
+            val res = videoSrc.attr("height")
+                .let(toStandardQuality)
+                .let { "$it (${videoSrc.attr("width")}x${videoSrc.attr("height")})" }
             val videoUrl = videoSrc.text()
 
             Video(
@@ -328,10 +403,56 @@ class PlaylistUtils(private val client: OkHttpClient, private val headers: Heade
 
     // ============================= Utilities ==============================
 
+    private fun String.toDefaultReferer(): String {
+        return try {
+            toHttpUrl().run { "$scheme://$host/" }
+        } catch (e: IllegalArgumentException) {
+            ""
+        }
+    }
+
+    private fun stnQuality(quality: String): String {
+        val intQuality = quality.trim().toIntOrNull() ?: return quality
+        val result = STANDARD_QUALITIES.minByOrNull { abs(it - intQuality) } ?: intQuality
+        return "${result}p"
+    }
+
+    private fun cleanSubtitleData(matchResult: MatchResult): String {
+        val lineCount = matchResult.groupValues[1].count { it == '\n' }
+        return "\n" + "&nbsp;\n".repeat(lineCount - 1)
+    }
+
+    fun fixSubtitles(subtitleList: List<Track>): List<Track> {
+        return subtitleList.mapNotNull {
+            try {
+                val subData = client.newCall(GET(it.url)).execute().body.string()
+
+                val file = File.createTempFile("subs", "vtt")
+                    .also(File::deleteOnExit)
+
+                file.writeText(FIX_SUBTITLE_REGEX.replace(subData, ::cleanSubtitleData))
+                val uri = Uri.fromFile(file)
+
+                Track(uri.toString(), it.lang)
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     companion object {
+        private val FIX_SUBTITLE_REGEX = Regex("""${'$'}(\n{2,})(?!(?:\d+:)*\d+(?:\.\d+)?\s-+>\s(?:\d+:)*\d+(?:\.\d+)?)""", RegexOption.MULTILINE)
+
         private const val PLAYLIST_SEPARATOR = "#EXT-X-STREAM-INF:"
 
         private val SUBTITLE_REGEX by lazy { Regex("""#EXT-X-MEDIA:TYPE=SUBTITLES.*?NAME="(.*?)".*?URI="(.*?)"""") }
         private val AUDIO_REGEX by lazy { Regex("""#EXT-X-MEDIA:TYPE=AUDIO.*?NAME="(.*?)".*?URI="(.*?)"""") }
+
+        private val CODECS_REGEX by lazy { Regex("""CODECS="([^"]+)"""") }
+        private val RESOLUTION_REGEX by lazy { Regex("""RESOLUTION=([xX\d]+)""") }
+        private val QUALITY_REGEX by lazy { Regex("""[xX](\d+)""") }
+        private val BANDWIDTH_REGEX by lazy { Regex("""BANDWIDTH=(\d+)""") }
+
+        private val STANDARD_QUALITIES = listOf(144, 240, 360, 480, 720, 1080, 1440, 2160)
     }
 }

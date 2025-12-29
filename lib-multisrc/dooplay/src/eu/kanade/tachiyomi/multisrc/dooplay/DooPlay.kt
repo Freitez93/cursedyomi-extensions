@@ -238,6 +238,7 @@ abstract class DooPlay(
 
     protected open val additionalInfoItems = when (lang) {
         "pt-BR" -> listOf("Título", "Ano", "Temporadas", "Episódios")
+        "es-MX" -> listOf("Titulo", "Año", "Temporadas", "Episodios")
         else -> listOf("Original", "First", "Last", "Seasons", "Episodes")
     }
 
@@ -257,7 +258,6 @@ abstract class DooPlay(
                     sheader.selectFirst("div.data > h1")!!.text()
                 }
             }
-
             genre = sheader.select("div.data > div.sgeneros > a")
                 .eachText()
                 .joinToString()
