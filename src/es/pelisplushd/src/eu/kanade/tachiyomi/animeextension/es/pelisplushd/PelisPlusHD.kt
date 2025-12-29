@@ -166,7 +166,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
 
     private fun serverVideoResolver(url: String, prefix: String = ""): List<Video> {
         return runCatching {
-            Log.d("SoloLatino", "URL: $url")
+            Log.d("PelisPlusHD", "URL: $url")
             when {
                 "voe" in url -> voeExtractor.videosFromUrl(url, "$prefix ")
                 "uqload" in url -> uqloadExtractor.videosFromUrl(url, prefix)
