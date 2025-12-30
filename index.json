@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Aniyomi: PelisPlusHD+",
+    "pkg": "eu.kanade.tachiyomi.animeextension.es.pelisplushdcursed",
+    "apk": "aniyomi-es.pelisplushdcursed-v14.3.apk",
+    "lang": "es",
+    "code": 3,
+    "version": "14.3",
+    "nsfw": 0,
+    "hasReadme": 0,
+    "hasChangelog": 0,
+    "sources": [
+      {
+        "name": "PelisPlusHD+",
+        "lang": "es",
+        "id": "8125391441411675661",
+        "baseUrl": "https://pelisplushd.bz",
+        "versionId": 1
+      }
+    ]
+  },
+  {
+    "name": "Aniyomi: SoloLatino+",
+    "pkg": "eu.kanade.tachiyomi.animeextension.es.sololatinocursed",
+    "apk": "aniyomi-es.sololatinocursed-v14.5.apk",
+    "lang": "es",
+    "code": 5,
+    "version": "14.5",
+    "nsfw": 0,
+    "hasReadme": 0,
+    "hasChangelog": 0,
+    "sources": [
+      {
+        "name": "SoloLatino+",
+        "lang": "es",
+        "id": "2168637495373172929",
+        "baseUrl": "https://sololatino.net",
+        "versionId": 1
+      }
+    ]
+  }
+]
