@@ -9,5 +9,6 @@
 build/
 repo/
 apk/
-gen
+release/
 generated-src/
+gen
