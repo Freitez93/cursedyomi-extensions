@@ -2,17 +2,18 @@ package eu.kanade.tachiyomi.animeextension.es.pelisplushd
 
 import android.util.Base64
 import android.util.Log
+import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.util.asJsoup
 import eu.kanade.tachiyomi.util.parseAs
+import extensions.utils.toRequestBody
 import kotlinx.serialization.Serializable
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 
-// ========== Extractor de links de Embed69
 class Embed69(private val client: OkHttpClient) {
     fun getLinks(url: String): Map<String, List<String>> {
         val mainUrl = "https://embed69.org"
@@ -77,13 +78,11 @@ class ReEmbed(private val client: OkHttpClient) {
             document.select(selector).forEach { link ->
                 runCatching {
                     val onclickAttr = link.attr("onclick")
-                    val decoded = getFirstMatch("""\.php\?link=(.+?)&servidor=""".toRegex(), onclickAttr)
-                    if (decoded.isNotEmpty()) {
-                        langLinks.add(String(Base64.decode(decoded, Base64.DEFAULT)))
+                    getFirstMatch("""go_to_playerVast\('(.+?)'""", onclickAttr)?.let { langLinks.add(it) }
+                    getFirstMatch("""go_to_player\('(.+?)'""", onclickAttr)?.let { langLinks.add(it) }
+                    getFirstMatch("""\.php\?link=(.+?)&servidor=""", onclickAttr)?.let {
+                        langLinks.add(String(Base64.decode(it, Base64.DEFAULT)))
                     }
-
-                    extractPlayerLink(onclickAttr, """go_to_playerVast\('(.+?)'""")?.let { langLinks.add(it) }
-                    extractPlayerLink(onclickAttr, """go_to_player\('(.+?)'""")?.let { langLinks.add(it) }
                 }.onFailure {
                     Log.e("SoloLatino", "Error al procesar enlace antiguo: ${it.message}")
                 }
@@ -96,16 +95,25 @@ class ReEmbed(private val client: OkHttpClient) {
     }
 }
 
-// ============================== Funciones Auxiliares ===============================
-fun extractPlayerLink(onclickAttr: String, pattern: String): String? {
-    return pattern.toRegex().find(onclickAttr)?.groupValues?.get(1)
+class WolfstreamExtractor(private val client: OkHttpClient) {
+    fun videosFromUrl(url: String, prefix: String = ""): List<Video> {
+        val mediaUrl = client.newCall(
+            GET(url),
+        ).execute().asJsoup().selectFirst("script:containsData(sources)")?.let {
+            it.data().substringAfter("{file:\"").substringBefore("\"")
+        } ?: return emptyList()
+        return listOf(
+            Video(mediaUrl, "${prefix}WolfStream", mediaUrl),
+        )
+    }
 }
 
-fun getFirstMatch(regex: Regex, input: String): String {
-    return regex.find(input)?.groupValues?.get(1) ?: ""
+// ================================ Funciones Auxiliares ================================
+fun getFirstMatch(pattern: String, input: String): String? {
+    return pattern.toRegex().find(input)?.groupValues?.get(1)
 }
 
-// ===================================== data class ===================================
+// ===================================== data class =====================================
 @Serializable
 data class Loadlinks(
     val success: Boolean,
