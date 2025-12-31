@@ -162,7 +162,9 @@ open class SoloLatino : DooPlay(
                 ?.let { episodeNumberRegex.find(it)?.groupValues?.last() } ?: "0"
 
             val href = element.selectFirst("a[href]")!!.attr("href")
-            val episodeName = element.selectFirst("div.epst")?.text() ?: "Sin título"
+            val episodeName = element.selectFirst("div.epst")?.text()?.let { text ->
+                if ("Episodio " in text) "Sin título" else text
+            } ?: "Sin título"
 
             episode_number = epNum.toFloatOrNull() ?: 0F
             date_upload = element.selectFirst("span.date")?.text()?.toDate() ?: 0L
@@ -178,6 +180,7 @@ open class SoloLatino : DooPlay(
     private val filemoonExtractor by lazy { FilemoonExtractor(client) }
     private val mp4UploadExtractor by lazy { Mp4uploadExtractor(client) }
     private val universalExtractor by lazy { UniversalExtractor(client) }
+    private val wolfStreamExtractor by lazy { WolfstreamExtractor(client) }
     private val vidHideExtractor by lazy { VidHideExtractor(client, headers) }
     private val streamWishExtractor by lazy { StreamWishExtractor(client, headers) }
 
@@ -187,25 +190,23 @@ open class SoloLatino : DooPlay(
             .findAll(document.html())
             .toList()
 
-        val iframeList = dataPost.map {
-            processLinkPage(it, response.request.url.toString())
-        }
+        val iframeList = dataPost.map { processLinkPage(it, response.request.url.toString()) }
 
-        return iframeList.parallelFlatMapBlocking { url ->
-            if (url.contains("embed69")) {
-                Embed69(client).getLinks(url).flatMap { (language, links) ->
-                    links.flatMap { link ->
-                        serverVideoResolver(link, " $language")
+        return iframeList.flatMap { url ->
+            when {
+                url.contains("embed69") -> {
+                    val languageToLinks = Embed69(client).getLinks(url)
+                    languageToLinks.flatMap { (language, links) ->
+                        serverVideoResolver(links, " $language")
                     }
                 }
-            } else if (url.contains("re.sololatino.net")) {
-                ReEmbed(client).getLinks(url).flatMap { (language, links) ->
-                    links.flatMap { link ->
-                        serverVideoResolver(link, " $language")
+                url.contains("re.sololatino.net") -> {
+                    val languageToLinks = ReEmbed(client).getLinks(url)
+                    languageToLinks.flatMap { (language, links) ->
+                        serverVideoResolver(links, " $language")
                     }
                 }
-            } else {
-                emptyList()
+                else -> emptyList()
             }
         }
     }
@@ -231,27 +232,37 @@ open class SoloLatino : DooPlay(
             ).execute().body.string()
 
             Log.d("SoloLatino", "processLinkPage: $responseHtml")
-            // Extract the final URL using a pre-compiled regex
-            getFirstMatch("""<iframe class='[^']+' src='([^']+)""".toRegex(), responseHtml)
+            // Extract the final URL using a regex
+            getFirstMatch("""<iframe class='[^']+' src='([^']+)""", responseHtml) ?: ""
         } catch (e: Exception) {
             Log.e("SoloLatino", "Error in processLinkPage: ${e.message}")
             "" // Return empty string on error
         }
     }
 
-    private fun serverVideoResolver(url: String, prefix: String = ""): List<Video> {
-        return runCatching {
-            Log.d("SoloLatino", "URL: $url")
-            when {
-                "voe" in url -> voeExtractor.videosFromUrl(url, "$prefix ")
-                "uqload" in url -> uqloadExtractor.videosFromUrl(url, prefix)
-                "mp4upload" in url -> mp4UploadExtractor.videosFromUrl(url, headers, "$prefix ")
-                arrayOf("streamwish", "wish", "hglink").any(url) -> streamWishExtractor.videosFromUrl(url, "$prefix StreamWish")
-                arrayOf("filemoon", "moonplayer", "bysedikamoum").any(url) -> filemoonExtractor.videosFromUrl(url, "$prefix Filemoon:")
-                arrayOf("streamhide", "streamvid", "vidhide", "dintezuvio").any(url) -> vidHideExtractor.videosFromUrl(url, videoNameGen = { "$prefix VidHide:$it" })
-                else -> universalExtractor.videosFromUrl(url, headers, prefix = "$prefix ")
-            }
-        }.getOrElse { emptyList() }
+    private fun serverVideoResolver(urls: List<String>, prefix: String = ""): List<Video> {
+        val domVidHide = arrayOf("dintezuvio", "filelions", "vidhide", "anime7u")
+        val domFileMoon = arrayOf("filemoon", "moonplayer", "bysedikamoum")
+        val domStreamWish = arrayOf("streamwish", "wish", "hglink", "hgplaycdn", "iplayerhls")
+
+        return urls.parallelFlatMapBlocking { url ->
+            runCatching {
+                Log.d("SoloLatino", "URL: $url")
+                when {
+                    "voe" in url -> voeExtractor.videosFromUrl(url, "$prefix ")
+                    "uqload" in url -> uqloadExtractor.videosFromUrl(url, prefix)
+                    "mp4upload" in url -> mp4UploadExtractor.videosFromUrl(url, headers, "$prefix ")
+                    "wolfstream" in url -> wolfStreamExtractor.videosFromUrl(url, "$prefix ")
+                    domFileMoon.any(url) -> filemoonExtractor.videosFromUrl(url, "$prefix Filemoon:")
+                    domVidHide.any(url) -> {
+                        val mediaID = url.substringAfterLast("/")
+                        vidHideExtractor.videosFromUrl("https://callistanise.com/v/$mediaID", videoNameGen = { "$prefix VidHide:$it" })
+                    }
+                    domStreamWish.any(url) -> streamWishExtractor.videosFromUrl(url, "$prefix StreamWish")
+                    else -> universalExtractor.videosFromUrl(url, headers, prefix = "$prefix ")
+                }
+            }.getOrElse { emptyList() }
+        }
     }
 
     // ============================== Filters ===============================
