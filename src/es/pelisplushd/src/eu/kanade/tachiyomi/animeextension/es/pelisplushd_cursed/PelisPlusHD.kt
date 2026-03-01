@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.animeextension.es.pelisplushd
+package eu.kanade.tachiyomi.animeextension.es.pelisplushd_cursed
 
 import android.util.Log
 import androidx.preference.ListPreference
@@ -28,7 +28,6 @@ import org.jsoup.nodes.Element
 
 open class PelisPlusHD(override val name: String, override val baseUrl: String) : ConfigurableAnimeSource, ParsedAnimeHttpSource() {
 
-    override val id: Long = 1400819034564144239L
     override val lang = "es"
     override val supportsLatest = true
     val preferences by getPreferencesLazy()
@@ -129,7 +128,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
             it.groupValues[1]
         }
 
-        Log.d("PelisPlusHD", "videoListParse: $iframeList")
+        Log.d("PelisPlusHD_CUSTOM", "videoListParse: $iframeList")
         return iframeList.flatMap { url ->
             when {
                 url.contains("embed69") -> {
@@ -166,7 +165,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
 
         return urls.parallelFlatMapBlocking { url ->
             runCatching {
-                Log.d("PelisPlusHD", "URL: $url")
+                Log.d("PelisPlusHD_CUSTOM", "URL: $url")
                 when {
                     "voe" in url -> voeExtractor.videosFromUrl(url, "$prefix ")
                     "uqload" in url -> uqloadExtractor.videosFromUrl(url, prefix)

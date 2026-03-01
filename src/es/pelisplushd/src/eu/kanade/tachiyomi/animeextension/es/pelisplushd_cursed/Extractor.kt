@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.animeextension.es.pelisplushd
+package eu.kanade.tachiyomi.animeextension.es.pelisplushd_cursed
 
 import android.util.Base64
 import android.util.Log
@@ -48,7 +48,7 @@ class Embed69(private val client: OkHttpClient) {
                         ),
                     ).execute().parseAs<Loadlinks>()
 
-                    Log.d("PelisPlusHD", decrypted.toString())
+                    Log.d("PelisPlusHD_CUSTOM", decrypted.toString())
                     if (decrypted.success) {
                         val links = decrypted.links.map { it.link }
                         val listForLang = allLinksByLanguage.getOrPut(language) { mutableListOf() }
@@ -57,10 +57,10 @@ class Embed69(private val client: OkHttpClient) {
                 }
             } catch (e: Exception) {
                 // Handle error appropriately
-                Log.e("PelisPlusHD", "Error loading links: ${e.message}")
+                Log.e("PelisPlusHD_CUSTOM", "Error loading links: ${e.message}")
             }
         } else {
-            Log.d("PelisPlusHD", "dataLink not found in response")
+            Log.d("PelisPlusHD_CUSTOM", "dataLink not found in response")
         }
         return allLinksByLanguage
     }
@@ -85,7 +85,7 @@ class ReEmbed(private val client: OkHttpClient) {
                         langLinks.add(String(Base64.decode(it, Base64.DEFAULT)))
                     }
                 }.onFailure {
-                    Log.e("PelisPlusHD", "Error al procesar enlace antiguo: ${it.message}")
+                    Log.e("PelisPlusHD_CUSTOM", "Error al procesar enlace antiguo: ${it.message}")
                 }
             }
             if (langLinks.isNotEmpty()) {
