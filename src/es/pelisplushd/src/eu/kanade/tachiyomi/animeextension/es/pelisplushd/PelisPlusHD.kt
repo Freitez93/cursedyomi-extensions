@@ -138,7 +138,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
                         serverVideoResolver(links, " $language")
                     }
                 }
-                url.contains("re.sololatino.net") -> {
+                url.contains("xupalace") -> {
                     val languageToLinks = ReEmbed(client).getLinks(url)
                     languageToLinks.flatMap { (language, links) ->
                         serverVideoResolver(links, " $language")

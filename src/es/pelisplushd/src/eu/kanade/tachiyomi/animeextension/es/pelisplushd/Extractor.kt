@@ -48,7 +48,7 @@ class Embed69(private val client: OkHttpClient) {
                         ),
                     ).execute().parseAs<Loadlinks>()
 
-                    Log.d("SoloLatino", decrypted.toString())
+                    Log.d("PelisPlusHD", decrypted.toString())
                     if (decrypted.success) {
                         val links = decrypted.links.map { it.link }
                         val listForLang = allLinksByLanguage.getOrPut(language) { mutableListOf() }
@@ -57,10 +57,10 @@ class Embed69(private val client: OkHttpClient) {
                 }
             } catch (e: Exception) {
                 // Handle error appropriately
-                Log.e("SoloLatino", "Error loading links: ${e.message}")
+                Log.e("PelisPlusHD", "Error loading links: ${e.message}")
             }
         } else {
-            Log.d("SoloLatino", "dataLink not found in response")
+            Log.d("PelisPlusHD", "dataLink not found in response")
         }
         return allLinksByLanguage
     }
@@ -80,13 +80,12 @@ class ReEmbed(private val client: OkHttpClient) {
             document.select(selector).forEach { link ->
                 runCatching {
                     val onclickAttr = link.attr("onclick")
-                    getFirstMatch("""go_to_playerVast\('(.+?)'""", onclickAttr)?.let { langLinks.add(it) }
-                    getFirstMatch("""go_to_player\('(.+?)'""", onclickAttr)?.let { langLinks.add(it) }
+                    getFirstMatch("""['"](https?:\/\/[^'"]+)['"]""", onclickAttr)?.let { langLinks.add(it) }
                     getFirstMatch("""\.php\?link=(.+?)&servidor=""", onclickAttr)?.let {
                         langLinks.add(String(Base64.decode(it, Base64.DEFAULT)))
                     }
                 }.onFailure {
-                    Log.e("SoloLatino", "Error al procesar enlace antiguo: ${it.message}")
+                    Log.e("PelisPlusHD", "Error al procesar enlace antiguo: ${it.message}")
                 }
             }
             if (langLinks.isNotEmpty()) {
@@ -120,7 +119,7 @@ class WolfstreamExtractor(private val client: OkHttpClient) {
             } catch (e: Exception) {
                 // Catch potential exceptions (e.g., network errors, parsing issues)
                 // You might want to log the exception here: Log.e("WolfstreamExtractor", "Error fetching videos", e)
-                Log.e("WolfstreamExtractor", "Error fetching videos", e)
+                Log.e("PelisPusHD", "Error fetching videos", e)
                 emptyList()
             }
         }
