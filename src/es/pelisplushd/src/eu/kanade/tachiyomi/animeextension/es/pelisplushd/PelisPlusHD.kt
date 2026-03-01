@@ -21,14 +21,10 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.util.asJsoup
 import eu.kanade.tachiyomi.util.parallelFlatMapBlocking
 import extensions.utils.getPreferencesLazy
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import okhttp3.Request
 import okhttp3.Response
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
-import uy.kohesive.injekt.injectLazy
 
 open class PelisPlusHDCursed(override val name: String, override val baseUrl: String) : ConfigurableAnimeSource, ParsedAnimeHttpSource() {
 
@@ -130,7 +126,7 @@ open class PelisPlusHDCursed(override val name: String, override val baseUrl: St
         val document = response.asJsoup()
         val data = document.selectFirst("script:containsData(video[1] = )")?.data() ?: return emptyList()
         val iframeList = REGEX_VIDEO_OPTS.findAll(data).toList().map {
-            it.groupValues.get(1)
+            it.groupValues[1]
         }
 
         Log.d("PelisPlusHD", "videoListParse: $iframeList")
@@ -244,13 +240,6 @@ open class PelisPlusHDCursed(override val name: String, override val baseUrl: St
     }
 
     private fun Array<String>.any(url: String): Boolean = this.any { url.contains(it, ignoreCase = true) }
-
-    @Serializable
-    data class SortedEmbedsDto(
-        val link: String? = null,
-        val type: String? = null,
-        val servername: String? = null,
-    )
 
     override fun setupPreferenceScreen(screen: PreferenceScreen) {
         ListPreference(screen.context).apply {

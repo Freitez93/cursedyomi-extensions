@@ -7,12 +7,14 @@ import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.POST
 import eu.kanade.tachiyomi.util.asJsoup
 import eu.kanade.tachiyomi.util.parseAs
-import extensions.utils.toRequestBody
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
+import org.jsoup.Jsoup
 
 class Embed69(private val client: OkHttpClient) {
     fun getLinks(url: String): Map<String, List<String>> {
@@ -96,15 +98,32 @@ class ReEmbed(private val client: OkHttpClient) {
 }
 
 class WolfstreamExtractor(private val client: OkHttpClient) {
-    fun videosFromUrl(url: String, prefix: String = ""): List<Video> {
-        val mediaUrl = client.newCall(
-            GET(url),
-        ).execute().asJsoup().selectFirst("script:containsData(sources)")?.let {
-            it.data().substringAfter("{file:\"").substringBefore("\"")
-        } ?: return emptyList()
-        return listOf(
-            Video(mediaUrl, "${prefix}WolfStream", mediaUrl),
-        )
+    // Mark the function as suspend
+    suspend fun videosFromUrl(url: String, prefix: String = ""): List<Video> {
+        // Use withContext to switch to a background thread (Dispatchers.IO)
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = client.newCall(GET(url)).execute()
+
+                if (!response.isSuccessful) {
+                    // Handle non-successful responses
+                    return@withContext emptyList()
+                }
+
+                val document = Jsoup.parse(response.body.string())
+                val mediaUrl = document.selectFirst("script:containsData(sources)")?.data()
+                    ?.substringAfter("{file:\"")
+                    ?.substringBefore("\"")
+                    ?: return@withContext emptyList()
+
+                listOf(Video(mediaUrl, "${prefix}WolfStream", mediaUrl))
+            } catch (e: Exception) {
+                // Catch potential exceptions (e.g., network errors, parsing issues)
+                // You might want to log the exception here: Log.e("WolfstreamExtractor", "Error fetching videos", e)
+                Log.e("WolfstreamExtractor", "Error fetching videos", e)
+                emptyList()
+            }
+        }
     }
 }
 
