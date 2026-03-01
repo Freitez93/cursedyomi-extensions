@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.animeextension.es.pelisplushd_cursed
+package eu.kanade.tachiyomi.animeextension.es.pelisplushdcursed
 
 import android.util.Log
 import androidx.preference.ListPreference
