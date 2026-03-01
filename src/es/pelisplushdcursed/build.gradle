@@ -1,5 +1,5 @@
 ext {
-    extName = 'PelisPlusHDCursed'
+    extName = 'PelisPlusHD+'
     extClass = '.PelisPlusHDFactory'
     extVersionCode = 1
 }
