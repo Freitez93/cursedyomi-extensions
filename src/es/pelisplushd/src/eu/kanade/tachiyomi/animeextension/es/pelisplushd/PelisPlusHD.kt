@@ -30,13 +30,12 @@ import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 import uy.kohesive.injekt.injectLazy
 
-open class PelisPlusHD(override val name: String, override val baseUrl: String) : ConfigurableAnimeSource, ParsedAnimeHttpSource() {
+open class PelisPlusHDCursed(override val name: String, override val baseUrl: String) : ConfigurableAnimeSource, ParsedAnimeHttpSource() {
 
-    override val id: Long = 1400819034564144238L
+    override val id: Long = 1400819034564144239L
     override val lang = "es"
     override val supportsLatest = true
     val preferences by getPreferencesLazy()
-    private val json: Json by injectLazy()
 
     companion object {
         const val PREF_QUALITY_KEY = "preferred_quality"
@@ -171,7 +170,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
 
         return urls.parallelFlatMapBlocking { url ->
             runCatching {
-                Log.d("SoloLatino", "URL: $url")
+                Log.d("PelisPlusHD", "URL: $url")
                 when {
                     "voe" in url -> voeExtractor.videosFromUrl(url, "$prefix ")
                     "uqload" in url -> uqloadExtractor.videosFromUrl(url, prefix)
@@ -196,7 +195,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
             compareBy(
                 { it.quality.contains(server, true) },
                 { it.quality.contains(quality) },
-                { Regex("""(\d+)p""").find(it.quality)?.groupValues?.get(1)?.toIntOrNull() ?: 0 },
+                { Regex(""""(\d+)p"""").find(it.quality)?.groupValues?.get(1)?.toIntOrNull() ?: 0 },
             ),
         ).reversed()
     }
@@ -245,16 +244,6 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
     }
 
     private fun Array<String>.any(url: String): Boolean = this.any { url.contains(it, ignoreCase = true) }
-
-    infix fun <A, B> Pair<A, B>.to(c: String): Triple<A, B, String> = Triple(this.first, this.second, c)
-
-    @Serializable
-    data class DataLinkDto(
-        @SerialName("video_language")
-        val videoLanguage: String? = null,
-        @SerialName("sortedEmbeds")
-        val sortedEmbeds: List<SortedEmbedsDto?> = emptyList(),
-    )
 
     @Serializable
     data class SortedEmbedsDto(
