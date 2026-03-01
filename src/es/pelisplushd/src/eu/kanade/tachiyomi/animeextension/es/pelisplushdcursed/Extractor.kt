@@ -17,6 +17,7 @@ import org.json.JSONArray
 import org.jsoup.Jsoup
 
 class Embed69(private val client: OkHttpClient) {
+    @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
     fun getLinks(url: String): Map<String, List<String>> {
         val mainUrl = "https://embed69.org"
         val res = client.newCall(GET(url)).execute().asJsoup()
@@ -48,7 +49,7 @@ class Embed69(private val client: OkHttpClient) {
                         ),
                     ).execute().parseAs<Loadlinks>()
 
-                    Log.d("PelisPlusHD_CUSTOM", decrypted.toString())
+                    Log.d("PelisPlusHD", decrypted.toString())
                     if (decrypted.success) {
                         val links = decrypted.links.map { it.link }
                         val listForLang = allLinksByLanguage.getOrPut(language) { mutableListOf() }
@@ -57,10 +58,10 @@ class Embed69(private val client: OkHttpClient) {
                 }
             } catch (e: Exception) {
                 // Handle error appropriately
-                Log.e("PelisPlusHD_CUSTOM", "Error loading links: ${e.message}")
+                Log.e("PelisPlusHD", "Error loading links: ${e.message}")
             }
         } else {
-            Log.d("PelisPlusHD_CUSTOM", "dataLink not found in response")
+            Log.d("PelisPlusHD", "dataLink not found in response")
         }
         return allLinksByLanguage
     }
@@ -85,7 +86,7 @@ class ReEmbed(private val client: OkHttpClient) {
                         langLinks.add(String(Base64.decode(it, Base64.DEFAULT)))
                     }
                 }.onFailure {
-                    Log.e("PelisPlusHD_CUSTOM", "Error al procesar enlace antiguo: ${it.message}")
+                    Log.e("PelisPlusHD", "Error al procesar enlace antiguo: ${it.message}")
                 }
             }
             if (langLinks.isNotEmpty()) {
