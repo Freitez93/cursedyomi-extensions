@@ -1,10 +1,10 @@
 package eu.kanade.tachiyomi.lib.streamwishextractor
 
 import dev.datlag.jsunpacker.JsUnpacker
-import eu.kanade.tachiyomi.animesource.model.Track
-import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.lib.playlistutils.PlaylistUtils
 import eu.kanade.tachiyomi.lib.synchrony.Deobfuscator
+import eu.kanade.tachiyomi.animesource.model.Track
+import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.util.asJsoup
 import kotlinx.serialization.Serializable
@@ -16,7 +16,10 @@ import okhttp3.OkHttpClient
 
 class StreamWishExtractor(private val client: OkHttpClient, private val headers: Headers) {
     private val playlistUtils by lazy { PlaylistUtils(client, headers) }
-    private val json = Json { isLenient = true; ignoreUnknownKeys = true }
+    private val json = Json {
+        isLenient = true
+        ignoreUnknownKeys = true
+    }
 
     private val dmcaServersRegex = """dmca\s*=\s*\[(.*?)]""".toRegex(RegexOption.DOT_MATCHES_ALL)
     private val mainServersRegex = """main\s*=\s*\[(.*?)]""".toRegex(RegexOption.DOT_MATCHES_ALL)
@@ -79,44 +82,40 @@ class StreamWishExtractor(private val client: OkHttpClient, private val headers:
         )
     }
 
-    private fun extractServerList(regex: Regex, script: String): List<String> {
-        return regex.find(script)?.groupValues?.get(1)
-            ?.split(",")
-            ?.map { it.trim().removeSurrounding("\"").removeSurrounding("'") }
-            ?.filter { it.isNotEmpty() }
-            ?: emptyList()
+    private fun extractServerList(regex: Regex, script: String): List<String> = regex.find(script)?.groupValues?.get(1)
+        ?.split(",")
+        ?.map { it.trim().removeSurrounding("\"").removeSurrounding("'") }
+        ?.filter { it.isNotEmpty() }
+        ?: emptyList()
+
+    private fun getEmbedUrl(url: String): String = if (url.contains("/f/")) {
+        val videoId = url.substringAfter("/f/")
+        "https://streamwish.com/$videoId"
+    } else {
+        url
     }
 
-    private fun getEmbedUrl(url: String): String {
-        return if (url.contains("/f/")) {
-            val videoId = url.substringAfter("/f/")
-            "https://streamwish.com/$videoId"
-        } else {
-            url
+    private fun extractSubtitles(script: String): List<Track> = try {
+        val subtitleStr = script
+            .substringAfter("tracks")
+            .substringAfter("[")
+            .substringBefore("]")
+        val fixedSubtitleStr = FIX_TRACKS_REGEX.replace(subtitleStr) { match ->
+            "\"${match.value}\""
         }
-    }
 
-    private fun extractSubtitles(script: String): List<Track> {
-        return try {
-            val subtitleStr = script
-                .substringAfter("tracks")
-                .substringAfter("[")
-                .substringBefore("]")
-            val fixedSubtitleStr = FIX_TRACKS_REGEX.replace(subtitleStr) { match ->
-                "\"${match.value}\""
-            }
-
-            json.decodeFromString<List<TrackDto>>("[$fixedSubtitleStr]")
-                .filter { it.kind.equals("captions", true) }
-                .map { Track(it.file, it.label ?: "") }
-        } catch (e: SerializationException) {
-            emptyList()
-        }
+        json.decodeFromString<List<TrackDto>>("[$fixedSubtitleStr]")
+            .filter { it.kind.equals("captions", true) }
+            .map { Track(it.file, it.label ?: "") }
+    } catch (_: SerializationException) {
+        emptyList()
     }
 
     @Serializable
     private data class TrackDto(val file: String, val kind: String, val label: String? = null)
 
-    private val M3U8_REGEX = Regex("""https[^"]*m3u8[^"]*""")
-    private val FIX_TRACKS_REGEX = Regex("""(?<!["])(file|kind|label)(?!["])""")
+    companion object {
+        private val M3U8_REGEX by lazy { Regex("""https[^"]*m3u8[^"]*""") }
+        private val FIX_TRACKS_REGEX by lazy { Regex("""(?<!")(file|kind|label)(?!")""") }
+    }
 }
