@@ -363,6 +363,7 @@ open class SoloLatino : DooPlay(
             compareBy(
                 { it.quality.contains(lang, ignoreCase = true) },
                 { it.quality.contains(server, ignoreCase = true) },
+                { it.quality.contains(quality) },
                 // Extraer orden de numeración de la resolución
                 { Regex("""(\d+)p""").find(it.quality)?.groupValues?.get(1)?.toIntOrNull() ?: 0 }
             )

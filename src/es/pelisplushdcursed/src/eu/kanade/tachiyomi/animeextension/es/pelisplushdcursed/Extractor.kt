@@ -76,7 +76,7 @@ class ReEmbed(private val client: OkHttpClient) {
             ".OD_EN > li" to "SUB",
             "li[data-lang='0']" to "LAT",
             "li[data-lang='1']" to "ESP",
-            "li[data-lang='2']" to "SUB"
+            "li[data-lang='2']" to "SUB",
         )
         val links = mutableMapOf<String, List<String>>()
 

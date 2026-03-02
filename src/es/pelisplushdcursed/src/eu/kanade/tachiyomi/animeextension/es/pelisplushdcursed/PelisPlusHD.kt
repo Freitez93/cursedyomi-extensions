@@ -26,10 +26,7 @@ import okhttp3.Response
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
-open class PelisPlusHD(
-    override val name: String,
-    override val baseUrl: String
-) : ConfigurableAnimeSource, ParsedAnimeHttpSource() {
+open class PelisPlusHD(override val name: String, override val baseUrl: String) : ConfigurableAnimeSource, ParsedAnimeHttpSource() {
 
     override val lang = "es"
     override val supportsLatest = true
@@ -42,9 +39,7 @@ open class PelisPlusHD(
 
         private const val PREF_SERVER_KEY = "preferred_server"
         private const val PREF_SERVER_DEFAULT = "Voe"
-        private val SERVER_LIST = arrayOf(
-            "StreamWish", "Uqload", "StreamHideVid", "Mp4Upload", "Voe", "VidHide"
-        )
+        private val SERVER_LIST = arrayOf("StreamWish", "Uqload", "StreamHideVid", "Mp4Upload", "Voe", "VidHide")
 
         // Expresión regular para extraer las URLs de los iframes del script
         private val REGEX_VIDEO_OPTS = "'(https?://[^']*)'".toRegex()
@@ -251,7 +246,7 @@ open class PelisPlusHD(
                 Pair("Romance", "generos/romance"),
                 Pair("Suspense", "generos/suspense"),
                 Pair("Terror", "generos/terror"),
-                Pair("Western", "generos/western")
+                Pair("Western", "generos/western"),
             )
         )
 
