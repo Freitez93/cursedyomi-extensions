@@ -3,7 +3,7 @@ ext {
     extClass = '.SoloLatino'
     baseUrl = 'https://sololatino.net'
     themePkg = 'dooplay'
-    overrideVersionCode = 2
+    overrideVersionCode = 3
     isNsfw = false
 }
 
