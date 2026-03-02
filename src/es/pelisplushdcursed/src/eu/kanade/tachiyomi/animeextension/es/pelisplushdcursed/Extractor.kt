@@ -72,7 +72,11 @@ class ReEmbed(private val client: OkHttpClient) {
         val document = client.newCall(GET(url)).execute().asJsoup()
         val mapUrl = mapOf(
             ".OD_LAT > li" to "LAT",
-            ".OD_SUB > li" to "SUB",
+            ".OD_ES > li" to "ESP",
+            ".OD_EN > li" to "SUB",
+            "li[data-lang='0']" to "LAT",
+            "li[data-lang='1']" to "ESP",
+            "li[data-lang='2']" to "SUB"
         )
         val links = mutableMapOf<String, List<String>>()
 

@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.animeextension.es.sololatino
+package eu.kanade.tachiyomi.animeextension.es.sololatinocursed
 
 import android.util.Base64
 import android.util.Log
@@ -69,7 +69,11 @@ class ReEmbed(private val client: OkHttpClient) {
         val document = client.newCall(GET(url)).execute().asJsoup()
         val mapUrl = mapOf(
             ".OD_LAT > li" to "LAT",
-            ".OD_SUB > li" to "SUB",
+            ".OD_ES > li" to "ESP",
+            ".OD_EN > li" to "SUB",
+            "li[data-lang='0']" to "LAT",
+            "li[data-lang='1']" to "ESP",
+            "li[data-lang='2']" to "SUB"
         )
         val links = mutableMapOf<String, List<String>>()
 
@@ -78,8 +82,7 @@ class ReEmbed(private val client: OkHttpClient) {
             document.select(selector).forEach { link ->
                 runCatching {
                     val onclickAttr = link.attr("onclick")
-                    getFirstMatch("""go_to_playerVast\('(.+?)'""", onclickAttr)?.let { langLinks.add(it) }
-                    getFirstMatch("""go_to_player\('(.+?)'""", onclickAttr)?.let { langLinks.add(it) }
+                    getFirstMatch("""['"](https?:\/\/[^'"]+)['"]""", onclickAttr)?.let { langLinks.add(it) }
                     getFirstMatch("""\.php\?link=(.+?)&servidor=""", onclickAttr)?.let {
                         langLinks.add(String(Base64.decode(it, Base64.DEFAULT)))
                     }

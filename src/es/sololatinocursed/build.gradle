@@ -1,9 +1,9 @@
 ext {
-    extName = 'SoloLatino'
+    extName = 'SoloLatino+'
     extClass = '.SoloLatino'
     baseUrl = 'https://sololatino.net'
     themePkg = 'dooplay'
-    overrideVersionCode = 1
+    overrideVersionCode = 2
     isNsfw = false
 }
 

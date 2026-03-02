@@ -1,4 +1,4 @@
-package eu.kanade.tachiyomi.animeextension.es.sololatino
+package eu.kanade.tachiyomi.animeextension.es.sololatinocursed
 
 import eu.kanade.tachiyomi.animesource.model.AnimeFilter
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
