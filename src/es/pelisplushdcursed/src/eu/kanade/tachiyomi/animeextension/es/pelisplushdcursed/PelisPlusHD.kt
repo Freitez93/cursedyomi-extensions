@@ -110,7 +110,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
                     episode_number = 1F
                     name = "PELÍCULA"
                     setUrlWithoutDomain(url)
-                }
+                },
             )
         } else {
             document.select("div.tab-content div a").mapIndexed { index, element ->
@@ -119,8 +119,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
                     name = element.text()
                     setUrlWithoutDomain(element.attr("abs:href"))
                 }
-            }
-            .reversed() // Se invierte para mostrar los últimos episodios primero
+            }.reversed()
         }
     }
 
@@ -183,14 +182,13 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
                         val mediaID = url.substringAfterLast("/")
                         vidHideExtractor.videosFromUrl(
                             "https://callistanise.com/v/$mediaID",
-                            videoNameGen = { "$prefix VidHide:$it" }
+                            videoNameGen = { "$prefix VidHide:$it" },
                         )
                     }
                     domStreamWish.any { url.contains(it, ignoreCase = true) } -> streamWishExtractor.videosFromUrl(url, "$prefix StreamWish")
                     else -> universalExtractor.videosFromUrl(url, headers, prefix = "$prefix ")
                 }
-            }
-            .getOrDefault(emptyList()) // Manejo seguro de errores sin detener el resto de extractores
+            }.getOrDefault(emptyList()) // Manejo seguro de errores sin detener el resto de extractores
         }
     }
 
@@ -205,11 +203,10 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
                 // Extraer el número de resolución para un correcto ordenamiento
                 // (ej. 1080p > 720p)
                 {
-                    Regex("""(\d+)p""").find(it.quality)?.groupValues?.get(1)?.toIntOrNull() ?: 0
-                }
-            )
-        )
-        .reversed()
+                    Regex("(\\d+)p").find(it.quality)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                },
+            ),
+        ).reversed()
     }
 
     // ===================================== Filtros ======================================== //
@@ -217,7 +214,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
         AnimeFilter.Header("La búsqueda por texto ignora el filtro de año"),
         GenreFilter(),
         AnimeFilter.Header("Búsqueda por año"),
-        Tags("Año")
+        Tags("Año"),
     )
 
     private class GenreFilter :
@@ -247,13 +244,13 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
                 Pair("Suspense", "generos/suspense"),
                 Pair("Terror", "generos/terror"),
                 Pair("Western", "generos/western"),
-            )
+            ),
         )
 
     private class Tags(name: String) : AnimeFilter.Text(name)
 
     open class UriPartFilter(displayName: String, val vals: Array<Pair<String, String>>) :
-            AnimeFilter.Select<String>(displayName, vals.map { it.first }.toTypedArray()) {
+        AnimeFilter.Select<String>(displayName, vals.map { it.first }.toTypedArray()) {
         fun toUriPart() = vals[state].second
     }
 
@@ -277,8 +274,7 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
                     true
                 }
             }
-        }
-        .also(screen::addPreference)
+        }.also(screen::addPreference)
 
         ListPreference(screen.context).apply {
             key = PREF_QUALITY_KEY
@@ -298,7 +294,6 @@ open class PelisPlusHD(override val name: String, override val baseUrl: String) 
                     true
                 }
             }
-        }
-        .also(screen::addPreference)
+        }.also(screen::addPreference)
     }
 }

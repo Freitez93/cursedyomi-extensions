@@ -31,23 +31,23 @@ import java.util.Locale
 open class SoloLatino : DooPlay(
     "es",
     "SoloLatino+",
-    "https://sololatino.net"
+    "https://sololatino.net",
 ) {
 
     // ============================== Popular ===============================
     override fun popularAnimeSelector() = "article.item"
     override fun popularAnimeRequest(page: Int) = GET("$baseUrl/tendencias/page/$page", headers)
     override fun popularAnimeNextPageSelector(): String = "div.pagMovidy a"
-    
+
     override fun popularAnimeFromElement(element: Element): SAnime {
         return SAnime.create().apply {
             val img = element.selectFirst("img")
             val url = element.selectFirst("a")?.attr("href") ?: element.attr("href")
-            
+
             setUrlWithoutDomain(url)
             title = img?.attr("alt") ?: ""
             // Si data-srcset no existe, hacemos un fallback seguro al atributo src
-            thumbnail_url = img?.attr("data-srcset") ?: img?.attr("src") 
+            thumbnail_url = img?.attr("data-srcset") ?: img?.attr("src")
         }
     }
 
@@ -59,10 +59,10 @@ open class SoloLatino : DooPlay(
     // ============================== Search ================================
     override fun searchAnimeFromElement(element: Element): SAnime = popularAnimeFromElement(element)
     override fun searchAnimeSelector() = popularAnimeSelector()
-    
+
     override fun searchAnimeRequest(page: Int, query: String, filters: AnimeFilterList): Request {
         val params = SoloLatinoFilters.getSearchParameters(filters)
-        
+
         val path = when {
             params.genre.isNotBlank() -> {
                 when (params.genre) {
@@ -85,7 +85,7 @@ open class SoloLatino : DooPlay(
                         "toon" -> "genre_series/toons"
                         "todos" -> ""
                         else -> "tendencias"
-                    }
+                    },
                 )
                 if (params.isInverted) append("&orden=asc")
             }
@@ -100,15 +100,15 @@ open class SoloLatino : DooPlay(
 
     // =========================== Anime Details ============================
     override val additionalInfoSelector = "#single > div.content > div.wp-content"
-    
+
     override fun animeDetailsParse(document: Document): SAnime {
         val doc = getRealAnimeDoc(document) // Resuelve de DooPlay
         val url = doc.selectFirst("meta[property='og:url']")?.attr("content") ?: ""
         val sheader = doc.selectFirst("div.sheader")
-        
+
         return SAnime.create().apply {
             setUrlWithoutDomain(doc.location())
-            
+
             // Acceso seguro para extraer la imagen y el título del DOM
             sheader?.selectFirst("div.poster > img")?.let { imgElement ->
                 thumbnail_url = imgElement.getImageUrl()
@@ -116,11 +116,11 @@ open class SoloLatino : DooPlay(
                     sheader.selectFirst("div.data > h1")?.text() ?: ""
                 }
             }
-            
+
             author = doc.selectFirst(".person .data .name a")?.text()
             genre = sheader?.select("div.sgeneros > a")?.joinToString { it.text() }
             status = if (url.contains("/peliculas/")) SAnime.COMPLETED else SAnime.UNKNOWN
-            
+
             doc.selectFirst(additionalInfoSelector)?.let { info ->
                 description = buildString {
                     append(doc.getDescription())
@@ -136,7 +136,7 @@ open class SoloLatino : DooPlay(
     override fun episodeListParse(response: Response): List<SEpisode> {
         val doc = response.asJsoup()
         val seasonList = doc.select("div#seasons div.se-c")
-        
+
         return if (seasonList.isEmpty()) {
             // Manejo como película con único "episodio"
             listOf(
@@ -145,7 +145,7 @@ open class SoloLatino : DooPlay(
                     episode_number = 1F
                     name = episodeMovieText
                     date_upload = doc.selectFirst("span.date")?.text()?.toDate() ?: 0L
-                }
+                },
             )
         } else {
             // Iterar sobre las temporadas y unificar en una sola lista (inversa)
@@ -155,7 +155,7 @@ open class SoloLatino : DooPlay(
 
     override fun getSeasonEpisodes(season: Element): List<SEpisode> {
         val seasonName = season.attr("data-season")
-        
+
         return season.select("ul.episodios li").mapNotNull { element ->
             runCatching {
                 episodeFromElement(element, seasonName)
@@ -164,7 +164,7 @@ open class SoloLatino : DooPlay(
     }
 
     override fun episodeFromElement(element: Element): SEpisode = throw UnsupportedOperationException("Not used.")
-    
+
     override fun episodeFromElement(element: Element, seasonName: String): SEpisode {
         return SEpisode.create().apply {
             val epNum = element.selectFirst("div.numerando")?.text()
@@ -228,19 +228,19 @@ open class SoloLatino : DooPlay(
             .add("nume", "${mR.groups[3]?.value}")
             .add("type", "${mR.groups[1]?.value}")
             .build()
-            
+
         val newHeaders = headers.newBuilder()
             .set("Referer", path)
             .add("Accept", "*/*")
             .build()
-            
+
         return runCatching {
             val responseHtml = client.newCall(
                 POST(
                     url = "$baseUrl/wp-admin/admin-ajax.php",
                     headers = newHeaders,
                     body = body,
-                )
+                ),
             ).execute().body.string()
 
             Log.d("SoloLatino", "processLinkPage: $responseHtml")
@@ -333,13 +333,13 @@ open class SoloLatino : DooPlay(
         private const val PREF_LANG_KEY = "preferred_lang"
         private const val PREF_LANG_TITLE = "Idioma Preferido"
         private const val PREF_LANG_DEFAULT = "[LAT]"
-        
+
         private const val PREF_SERVER_KEY = "preferred_server"
         private const val PREF_SERVER_DEFAULT = "StreamWish"
-        
+
         // Elementos divididos apropiadamente en lugar de un string aglomerado
         private val SERVER_LIST = arrayOf("StreamWish", "Uqload", "StreamHideVid", "Mp4Upload", "Voe", "VidHide")
-        
+
         private val PREF_LANG_ENTRIES = arrayOf("[LAT]", "[SUB]", "[CAST]")
         private val PREF_LANG_VALUES = arrayOf("[LAT]", "[SUB]", "[CAST]")
     }
@@ -355,18 +355,18 @@ open class SoloLatino : DooPlay(
     override fun List<Video>.sort(): List<Video> {
         val quality = preferences.getString(prefQualityKey, prefQualityDefault) ?: prefQualityDefault
         val server = preferences.getString(PREF_SERVER_KEY, PREF_SERVER_DEFAULT) ?: PREF_SERVER_DEFAULT
-        
+
         // Corrección importante de bug: se usaba por error PREF_LANG_TITLE como key para las preferencias
         val lang = preferences.getString(PREF_LANG_KEY, PREF_LANG_DEFAULT) ?: PREF_LANG_DEFAULT
-        
+
         return sortedWith(
             compareBy(
                 { it.quality.contains(lang, ignoreCase = true) },
                 { it.quality.contains(server, ignoreCase = true) },
                 { it.quality.contains(quality) },
                 // Extraer orden de numeración de la resolución
-                { Regex("""(\d+)p""").find(it.quality)?.groupValues?.get(1)?.toIntOrNull() ?: 0 }
-            )
+                { Regex("""(\d+)p""").find(it.quality)?.groupValues?.get(1)?.toIntOrNull() ?: 0 },
+            ),
         ).reversed()
     }
 }
